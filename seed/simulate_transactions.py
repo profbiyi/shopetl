@@ -4,6 +4,8 @@ simulate_transactions.py — Generates bulk realistic e-commerce transactions.
 Usage:
     python seed/simulate_transactions.py --customers 50 --orders 200
     python seed/simulate_transactions.py  # uses defaults
+
+Safe to re-run — skips duplicate emails and duplicate reviews.
 """
 import sys, os, argparse, random, uuid
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -25,7 +27,7 @@ db   = SessionLocal()
 
 # ── Config ────────────────────────────────────────────────────────────────────
 parser = argparse.ArgumentParser()
-parser.add_argument("--customers", type=int, default=30,  help="Number of fake customers to create")
+parser.add_argument("--customers", type=int, default=30,  help="Number of NEW fake customers to create")
 parser.add_argument("--orders",    type=int, default=100, help="Number of fake orders to create")
 args = parser.parse_args()
 
@@ -43,11 +45,17 @@ def random_past_datetime(days_back: int = 180) -> datetime:
     )
 
 
-# ── 1. Create Customers ───────────────────────────────────────────────────────
+# ── 1. Create Customers (skip existing emails) ────────────────────────────────
 print(f"👤 Creating {args.customers} customers...")
-customers = []
-for _ in range(args.customers):
+existing_emails = {r[0] for r in db.query(Customer.email).all()}
+created = 0
+attempts = 0
+while created < args.customers and attempts < args.customers * 5:
+    attempts += 1
     email = fake.unique.email()
+    if email in existing_emails:
+        continue
+    existing_emails.add(email)
     c = Customer(
         first_name=fake.first_name(),
         last_name=fake.last_name(),
@@ -59,7 +67,9 @@ for _ in range(args.customers):
         password=hash_password("password123"),
     )
     db.add(c)
+    created += 1
 db.flush()
+print(f"   ✓ {created} new customers added")
 
 # Fetch all customers (including pre-existing)
 all_customers = db.query(Customer).all()
@@ -167,20 +177,34 @@ for i in range(args.orders):
     if (i + 1) % 20 == 0:
         print(f"   ... {i+1}/{args.orders} orders created")
 
-# ── 3. Reviews ────────────────────────────────────────────────────────────────
+# ── 3. Reviews (skip existing product+customer pairs) ─────────────────────────
 print("⭐ Adding product reviews...")
-for _ in range(min(args.orders // 2, 80)):
+existing_reviews = {
+    (r.product_id, r.customer_id)
+    for r in db.query(Review.product_id, Review.customer_id).all()
+}
+reviews_added = 0
+review_attempts = 0
+target_reviews = min(args.orders // 2, 200)
+while reviews_added < target_reviews and review_attempts < target_reviews * 10:
+    review_attempts += 1
+    pid = random.choice(all_products).id
+    cid = random.choice(all_customers).id
+    if (pid, cid) in existing_reviews:
+        continue
+    existing_reviews.add((pid, cid))
     db.add(Review(
-        product_id=random.choice(all_products).id,
-        customer_id=random.choice(all_customers).id,
+        product_id=pid,
+        customer_id=cid,
         rating=random.randint(1, 5),
         comment=fake.sentence() if random.random() > 0.4 else None,
     ))
+    reviews_added += 1
 
 db.commit()
 db.close()
 print(f"\n✅ Simulation complete!")
-print(f"   Customers : {args.customers} new")
+print(f"   Customers : {created} new added")
 print(f"   Orders    : {args.orders} created")
-print(f"   Reviews   : added")
+print(f"   Reviews   : {reviews_added} added")
 print(f"\nYour database is ready for ETL exercises 🚀")
