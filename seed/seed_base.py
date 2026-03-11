@@ -67,11 +67,13 @@ for p in products:
         db.flush()
     prod_objects.append(obj)
 
-# ── Inventory ─────────────────────────────────────────────────────────────────
+# ── Inventory (always replenish to 500) ───────────────────────────────────────
 for prod in prod_objects:
-    exists = db.query(Inventory).filter(Inventory.product_id == prod.id).first()
-    if not exists:
-        db.add(Inventory(product_id=prod.id, quantity=200, reorder_lvl=20))
+    inv = db.query(Inventory).filter(Inventory.product_id == prod.id).first()
+    if inv:
+        inv.quantity = 500
+    else:
+        db.add(Inventory(product_id=prod.id, quantity=500, reorder_lvl=20))
 
 # ── Coupons ───────────────────────────────────────────────────────────────────
 coupons = [

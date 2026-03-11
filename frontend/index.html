@@ -939,10 +939,9 @@ function removeCoupon() {
 }
 
 async function placeOrder() {
-  const addr    = document.getElementById('coAddr').value.trim();
-  const city    = document.getElementById('coCity').value.trim();
-  const country = document.getElementById('coCountry').value.trim();
-  if (!addr || !city || !country) { showAlert('coErr', 'Please fill in your delivery address'); return; }
+  const addr    = document.getElementById('coAddr').value.trim()    || '1 Main Street';
+  const city    = document.getElementById('coCity').value.trim()    || 'Lagos';
+  const country = document.getElementById('coCountry').value.trim() || 'Nigeria';
 
   const body = {
     items:            cart.map(x => ({ product_id: x.id, quantity: x.qty })),
