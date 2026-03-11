@@ -59,7 +59,7 @@ def get_current_customer(token: str = Depends(oauth2_scheme), db: Session = Depe
     payload = decode_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
-    customer = db.query(Customer).filter(Customer.id == payload.get("sub")).first()
+    customer = db.query(Customer).filter(Customer.id == int(payload.get("sub"))).first()
     if not customer or not customer.is_active:
         raise HTTPException(status_code=401, detail="Customer not found or inactive")
     return customer
@@ -85,7 +85,7 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
     customer = db.query(Customer).filter(Customer.email == form.username).first()
     if not customer or not verify_password(form.password, customer.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    token = create_access_token({"sub": customer.id, "email": customer.email})
+    token = create_access_token({"sub": str(customer.id), "email": customer.email})
     return {"access_token": token, "token_type": "bearer", "customer": CustomerOut.model_validate(customer)}
 
 
