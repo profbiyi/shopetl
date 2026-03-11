@@ -1016,10 +1016,7 @@ function toast(msg, type='') {
   toastTimer = setTimeout(() => el.classList.remove('up'), 3000);
 }
 
-// Close modals on backdrop click
-document.querySelectorAll('.modal-wrap').forEach(el =>
-  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); })
-);
+// Modals only close via the ✕ button, not backdrop click
 
 init();
 </script>
