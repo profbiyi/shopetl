@@ -3,13 +3,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
+import time
+import sqlalchemy.exc
 
 from app.database import engine
 from app.models.models import Base
 from app.routers import customers, products, orders, reviews
 
-# Create all tables
-Base.metadata.create_all(bind=engine)
+# Wait for DB and create all tables
+for attempt in range(10):
+    try:
+        Base.metadata.create_all(bind=engine)
+        break
+    except sqlalchemy.exc.OperationalError:
+        if attempt == 9:
+            raise
+        time.sleep(3)
 
 app = FastAPI(
     title="🛒 ETL Teaching E-commerce API",
